@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-#!/usr/bin/env python3
 """
 Plot PyRPL spectrum-analyzer CSV(s) with matplotlib.
 Magnitude (dB) on top, Phase (deg) below, like the GUI.
@@ -18,7 +17,6 @@ Usage:
     python plot_curve.py 1.csv 2.csv 3.csv            # overlay the 3 channels
     python plot_curve.py ~/pyrpl_user_dir/curve/csv   # overlay a whole folder
     python plot_curve.py 1.csv 2.csv 3.csv out.png    # trailing image -> save
-    python plot_curve.py 1.csv 2.csv 3.csv --combine combined.csv   # also merge
 """
 
 import os
@@ -91,26 +89,20 @@ def expand_inputs(args):
     return paths
 
 
-def main():
-    args = sys.argv[1:]
-    if not args:
-        sys.exit("Usage: python plot_curve.py <file.csv> [more.csv ...] "
-                 "[out.png] [--combine merged.csv]")
+def plot_curves(paths, save=None):
+    """Plot/overlay one or more CSVs (folders are expanded to their *.csv).
 
-    combine_to = None
-    if "--combine" in args:
-        i = args.index("--combine")
-        combine_to = args[i + 1]
-        del args[i:i + 2]
-
-    save_to = None
-    if args and args[-1].lower().endswith((".png", ".pdf", ".svg")):
-        save_to = args.pop()
-
-    paths = expand_inputs(args)
+    ``save`` writes the figure to that image path (else the plot is shown);
+    Returns the matplotlib Figure. Call this directly from a notebook instead
+    of going through the CLI.
+    """
+    if isinstance(paths, str):
+        paths = [paths]
+    paths = expand_inputs(paths)
     if not paths:
         sys.exit("No CSV files found.")
 
+    save_to = save
     files = [load(p) for p in paths]
 
     # ---- collect (label, base, color, columns-dict) per trace ----------
@@ -167,24 +159,26 @@ def main():
     bottom.set_xlabel("Frequency (Hz)")
     fig.tight_layout()
 
-    # ---- optional: merge the inputs into ONE wide CSV ------------------
-    if combine_to:
-        merged = None
-        for label, df in files:
-            sn = short_name(label)
-            x = df.columns[0]
-            ren = {c: (c if c == x else f"{sn}_{c}") for c in df.columns}
-            d = df.rename(columns=ren)
-            merged = d if merged is None else merged.merge(d, on=x, how="outer")
-        merged = merged.sort_values(merged.columns[0])
-        merged.to_csv(combine_to, index=False)
-        print("merged ->", combine_to, "(cols:", ", ".join(merged.columns), ")")
-
     if save_to:
         fig.savefig(save_to, dpi=150)
         print("saved", save_to)
     else:
         plt.show()
+
+    return fig
+
+
+def main():
+    args = sys.argv[1:]
+    if not args:
+        sys.exit("Usage: python plot_curve.py <file.csv> [more.csv ...] "
+                 "[out.png]")
+
+    save_to = None
+    if args and args[-1].lower().endswith((".png", ".pdf", ".svg")):
+        save_to = args.pop()
+
+    plot_curves(args, save=save_to)
 
 
 if __name__ == "__main__":

@@ -84,10 +84,18 @@ def convert(obj):
     return df, params
 
 
-def main():
+def convert_dir(in_dir=None, out_dir=None):
+    """Convert every .dat in ``in_dir`` to a CSV in ``out_dir``.
+
+    Both default to the standard PyRPL location (~/pyrpl_user_dir/curve and
+    its ``csv`` subfolder). Returns the output directory. Call this directly
+    from a notebook or other script instead of going through the CLI.
+    """
     home = os.path.expanduser("~")
-    in_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(home, "pyrpl_user_dir", "curve")
-    out_dir = sys.argv[2] if len(sys.argv) > 2 else os.path.join(in_dir, "csv")
+    if in_dir is None:
+        in_dir = os.path.join(home, "pyrpl_user_dir", "curve")
+    if out_dir is None:
+        out_dir = os.path.join(in_dir, "csv")
 
     if not os.path.isdir(in_dir):
         sys.exit(f"Curve folder not found: {in_dir}")
@@ -113,6 +121,13 @@ def main():
             print(f"{os.path.basename(path)}: FAILED ({type(e).__name__}: {e})")
 
     print(f"\nDone. CSVs in {out_dir}")
+    return out_dir
+
+
+def main():
+    in_dir = sys.argv[1] if len(sys.argv) > 1 else None
+    out_dir = sys.argv[2] if len(sys.argv) > 2 else None
+    convert_dir(in_dir, out_dir)
 
 
 if __name__ == "__main__":
