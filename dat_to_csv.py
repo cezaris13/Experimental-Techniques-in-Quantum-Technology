@@ -1,4 +1,4 @@
-#!/usr/b#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Convert PyRPL CurveDB .dat files (spectrum-analyzer 'Save curve' output) to CSV.
 

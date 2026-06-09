@@ -1,67 +1,78 @@
-# ============================================================================
-#  PyRPL spectrum-analyzer curves:  .dat  ->  .csv  ->  plot
-#  Override any variable on the command line, e.g.:
-#      make CSV_FILE=7.csv
-#      make CURVE_DIR=/data/run1 plot
-# ============================================================================
-
-# Python interpreter
 PYTHON    ?= python
-
-# Scripts
 CONVERT   ?= dat_to_csv.py
 PLOT      ?= plot_curve.py
 
-# Folder holding the .dat files
 CURVE_DIR ?= $(HOME)/pyrpl_user_dir/curve
-
-# Where .csv files are written
 CSV_DIR   ?= $(CURVE_DIR)/csv
 
-# Which curve to plot
-# test change
-CSV_FILE  ?= 20.csv
+# The channel files to plot together (in1 / in2 / cross)
+CSV_FILES ?= 1.csv 2.csv 3.csv
 
-# Full paths (do not edit)
-CSV_PATH  := $(CSV_DIR)/$(CSV_FILE)
-PNG       := $(CSV_DIR)/$(basename $(CSV_FILE)).png
-DAT_FILES := $(wildcard $(CURVE_DIR)/*.dat)
-STAMP     := $(CSV_DIR)/.converted
+PNG       ?= $(CSV_DIR)/plot.png
+COMBINED  ?= $(CSV_DIR)/combined.csv
 
-.PHONY: all convert plot save clean help
+CSV_PATHS := $(addprefix $(CSV_DIR)/,$(CSV_FILES))
 
-# Default: convert everything, then plot CSV_FILE
+.PHONY: all convert reconvert plot plotall save combine clean help
+
+define ENSURE_CSV
+	@for f in $(CSV_PATHS); do \
+	  if [ ! -e "$$f" ]; then \
+	    echo ">> CSV missing ($$f) - converting"; \
+	    $(PYTHON) $(CONVERT) $(CURVE_DIR) $(CSV_DIR); \
+	    break; \
+	  fi; \
+	done
+endef
+
 all: plot
 
-# Convert all .dat -> .csv (re-runs only if a .dat or the script changed)
-$(STAMP): $(CONVERT) $(DAT_FILES)
+# Convert only if a requested CSV is missing
+convert:
+	$(ENSURE_CSV)
+	@echo "CSVs ready in $(CSV_DIR)"
+
+# Force re-conversion
+reconvert:
 	$(PYTHON) $(CONVERT) $(CURVE_DIR) $(CSV_DIR)
-	@touch $@
 
-convert: $(STAMP)
+# Overlay CSV_FILES in a window (in1=blue, in2=green, cross=magenta)
+plot:
+	$(ENSURE_CSV)
+	$(PYTHON) $(PLOT) $(CSV_PATHS)
 
-# Plot CSV_FILE in a window (converts first if needed)
-plot: $(STAMP)
-	$(PYTHON) $(PLOT) $(CSV_PATH)
+# Overlay every CSV in CSV_DIR
+plotall:
+	$(ENSURE_CSV)
+	$(PYTHON) $(PLOT) $(CSV_DIR)
 
-# Same plot, saved to PNG instead of shown
-save: $(STAMP)
-	$(PYTHON) $(PLOT) $(CSV_PATH) $(PNG)
+# Overlay CSV_FILES, save the figure to PNG
+save:
+	$(ENSURE_CSV)
+	$(PYTHON) $(PLOT) $(CSV_PATHS) $(PNG)
 
-# Delete generated CSVs/PNGs
+# Merge CSV_FILES into ONE wide CSV (COMBINED) and save its plot
+combine:
+	$(ENSURE_CSV)
+	$(PYTHON) $(PLOT) $(CSV_PATHS) $(PNG) --combine $(COMBINED)
+
 clean:
 	rm -rf $(CSV_DIR)
 
 help:
 	@echo "Targets:"
-	@echo "  make convert   - convert all .dat in CURVE_DIR to .csv in CSV_DIR"
-	@echo "  make plot      - convert (if needed) then plot CSV_FILE in a window"
-	@echo "  make save      - convert (if needed) then save the plot to PNG"
-	@echo "  make clean     - delete the CSV_DIR"
+	@echo "  make plot      - overlay CSV_FILES in a window (3-trace GUI view)"
+	@echo "  make save      - overlay CSV_FILES, save to PNG"
+	@echo "  make combine   - merge CSV_FILES into one wide CSV ($(notdir $(COMBINED)))"
+	@echo "  make plotall   - overlay every CSV in CSV_DIR"
+	@echo "  make convert   - .dat -> .csv only if a requested CSV is missing"
+	@echo "  make reconvert - force re-conversion"
+	@echo "  make clean     - delete CSV_DIR"
 	@echo ""
-	@echo "Variables (override like 'make CSV_FILE=7.csv'):"
+	@echo "Variables (override like 'make CSV_FILES=\"1.csv 2.csv 3.csv\"'):"
 	@echo "  PYTHON    = $(PYTHON)"
 	@echo "  CURVE_DIR = $(CURVE_DIR)"
 	@echo "  CSV_DIR   = $(CSV_DIR)"
-	@echo "  CSV_FILE  = $(CSV_FILE)"
-	@echo "  CSV_PATH  = $(CSV_PATH)"
+	@echo "  CSV_FILES = $(CSV_FILES)"
+	@echo "  PNG       = $(PNG)"
+	@echo "  COMBINED  = $(COMBINED)"
