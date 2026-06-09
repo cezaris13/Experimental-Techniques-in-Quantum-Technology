@@ -19,6 +19,7 @@ CURVE_DIR ?= $(HOME)/pyrpl_user_dir/curve
 CSV_DIR   ?= $(CURVE_DIR)/csv
 
 # Which curve to plot
+# test change
 CSV_FILE  ?= 20.csv
 
 # Full paths (do not edit)
